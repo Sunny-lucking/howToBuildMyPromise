@@ -1,4 +1,4 @@
-\
+
 ![](https://imgkr.cn-bj.ufileos.com/a5ade491-dde3-48ce-b91f-276c9e689eeb.png)
 
 ## 整体流程的介绍
@@ -277,6 +277,7 @@ var promise = new Promise((resolve,reject)=>{
 
 好了，现在测试下，发现成功。
 ```js
+ // 例4
  let promise = new Promise((resolve,reject)=>{
         
         setTimeout(function () {
@@ -295,6 +296,208 @@ var promise = new Promise((resolve,reject)=>{
     )
 
 ```
+
+## 3. 实现then方法
+
+尽人皆知的时，执行到then时，promise可能会是pending状态，此时就要把then里的回调函数保存起来，也可能会是resolved或者rejected状态，此时要执行onResolved或onRejected方法。
+
+```js
+Promise.prototype.then = function(onResolved,onRejected){
+
+        var self = this
+
+        if(self.status === 'pending'){
+            // promise当前状态还是pending状态，将回调函数保存起来
+            self.callbacks.push({
+                onResolved,
+                onRejected
+            })
+        }else if(self.status === 'resolved'){
+            setTimeout(()=>{
+                onResolved(self.data)
+            })
+        }else{
+            setTimeout(()=>{
+                onResolved(self.data)
+            })
+        }
+
+    }
+
+```
+
+而且我们知道，执行完then是要返回一个新的promise的，而新的promise的状态则由当前then的执行结果来确定。
+
+
+```js
+ Promise.prototype.then = function(onResolved,onRejected){
+
+        var self = this
+
+        return new Promise((resolve,reject)=>{
+            if(self.status === 'pending'){
+                // promise当前状态还是pending状态，将回调函数保存起来
+                self.callbacks.push({
+                    onResolved,
+                    onRejected
+                })
+            }else if(self.status === 'resolved'){
+                setTimeout(()=>{
+                    onResolved(self.data)
+                })
+            }else{
+                setTimeout(()=>{
+                    onResolved(self.data)
+                })
+            }
+        })
+
+    }
+```
+当当前的promise状态为resolved的时候，则当前执行的onresolved函数由三种情况
+1. 如果回调函数返回的不是promise，return的promise的状态是resolved，value就是返回的值。
+
+```js
+// 例5
+    let promise = new Promise((resolve,reject)=>{
+        resolve(1)
+    })
+
+    promise.then(
+        value=>{
+            return value
+        },
+        reason=>{
+            console.log("onRejected:",reason);
+        }
+    )
+```
+因此，我们可以这样实现
+
+
+```js
+Promise.prototype.then = function(onResolved,onRejected){
+
+        var self = this
+
+        return new Promise((resolve,reject)=>{
+            if(self.status === 'pending'){
+                // promise当前状态还是pending状态，将回调函数保存起来
+                self.callbacks.push({
+                    onResolved,
+                    onRejected
+                })
+            }else if(self.status === 'resolved'){
+                setTimeout(()=>{
+                    const result = onResolved(self.data)
+                    if (result instanceof Promise){
+
+                    } else {
+                    // 1. 如果回调函数返回的不是promise，return的promise的状态是resolved，value就是返回的值。
+                        resolve(result)
+                    }
+                })
+            }else{
+                setTimeout(()=>{
+                    onResolved(self.data)
+                })
+            }
+        })
+
+    }
+```
+
+1. 如果回调函数返回的是promise，return的promise的结果就是这个promise的结果，如代码所示，我们返回一个新的promise。这个新的promise执行了resolve，因此返回的promise的状态是resolved的
+   
+```js
+// 例6
+ let promise = new Promise((resolve,reject)=>{
+        resolve(1)
+    })
+
+    promise.then(
+        value=>{
+            return new Promise((resolve,reject)=>{
+                resolve(2)
+            })
+        },
+        reason=>{
+            console.log("onRejected:",reason);
+        }
+    )
+```
+因此我们可以这样实现
+
+```js
+Promise.prototype.then = function(onResolved,onRejected){
+
+        var self = this
+
+        return new Promise((resolve,reject)=>{
+            if(self.status === 'pending'){
+                // promise当前状态还是pending状态，将回调函数保存起来
+                self.callbacks.push({
+                    onResolved,
+                    onRejected
+                })
+            }else if(self.status === 'resolved'){
+                setTimeout(()=>{
+                    const result = onResolved(self.data)
+                    if (result instanceof Promise){
+                        // 2. 如果回调函数返回的是promise，return的promise的结果就是这个promise的结果
+                        result.then(
+                            value => {resolve(value)},
+                            reason => {reject(reason)}
+                        )
+                    } else {
+                        // 1. 如果回调函数返回的不是promise，return的promise的状态是resolved，value就是返回的值。
+                        resolve(result)
+                    }
+                })
+            }else{
+                setTimeout(()=>{
+                    onResolved(self.data)
+                })
+            }
+        })
+
+    }
+
+```
+在这里说明一下：
+
+```
+result.then(
+    value => {resolve(value)},
+    reason => {reject(reason)}
+)
+```
+由于我们在例6中执行了then里的resolve函数，
+将会导致`value => {resolve(value)},`这个回调函数的执行，因此会把即将返回的新的promise的data设置为value，会把状态设置为resolved。
+
+3. 如果执行onResolved的时候抛出错误，则返回的promise的状态为rejected，我们可以用try catch来实现
+
+```js
+setTimeout(()=>{
+    try{
+        const result = onResolved(self.data)
+        if (result instanceof Promise){
+            // 2. 如果回调函数返回的是promise，return的promise的结果就是这个promise的结果
+            result.then(
+                value => {resolve(value)},
+                reason => {reject(reason)}
+            )
+        } else {
+            // 1. 如果回调函数返回的不是promise，return的promise的状态是resolved，value就是返回的值。
+            resolve(result)
+        }
+    }catch (e) {
+      //  3.如果执行onResolved的时候抛出错误，则返回的promise的状态为rejected
+        reject(e)
+    }
+})
+```
+
 
 
 ![](https://imgkr.cn-bj.ufileos.com/0eadfeaf-5a1c-45d4-9f4a-f6ab39fbf53a.png)
