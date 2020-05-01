@@ -9,15 +9,14 @@
 <body>
 <script>
     let promise = new Promise((resolve,reject)=>{
-
-        setTimeout(function () {
-            reject(1)
-        },100)
+        resolve(1)
     })
 
     promise.then(
         value=>{
-            console.log("onResolved:",value);
+            return new Promise((resolve,reject)=>{
+                resolve(2)
+            })
         },
         reason=>{
             console.log("onRejected:",reason);
