@@ -1,8 +1,9 @@
-
+\
 ![](https://imgkr.cn-bj.ufileos.com/a5ade491-dde3-48ce-b91f-276c9e689eeb.png)
 
 ## 整体流程的介绍
 1. 先定义整体结构
+2. 实现Promise构造函数
 2. 实现promise.then
 3. 实现promise.catch
 4. 实现promise.resovle
@@ -89,6 +90,210 @@
     Promise.race = function(value){
 
     }
+```
+
+## 2. 实现Promise构造函数
+
+1. 众所周知，构造函数里由resolve和reject方法，而且这两个方法会被传入executor，并且executor立即同步执行
+
+```js
+    /*
+    Promise构造函数
+    executor:执行器函数
+     */
+    function Promise(executor) {
+
+        function resovle() {
+
+        }
+        function reject() {
+
+        }
+
+        // 立即同步执行executor
+        executor(resovle,reject)
+    }
+
+```
+
+2. 家喻户晓的是，每个promise都有一个状态可能为pending或resolved，rejected。因此需要添加个status，此外，当我们这样使用Promise的时候，
+
+
+```js
+// 例1
+var promise = new Promise((resovle,reject)=>{
+    
+})
+
+promise.then(resolve=>{},reject=>{})
+```
+
+这时执行到then，promise的状态还是pending，这时要把值和then里面的回调函数保存起来，所以需要个data和callbacks
+
+
+```js
+function Promise(executor) {
+
+        var self = self
+
+        self.status = 'pending' // 给promise对象指定status属性，初始值为pending
+        self.data = undefined // 给promise对象指定一个存储结果的data
+        self.callbacks = []  // 每个元素的结构：{onResolved(){}，onRejected(){}}
+
+
+        function resovle() {
+
+        }
+        function reject() {
+
+        }
+
+        // 立即同步执行executor
+        executor(resovle,reject)
+    }
+```
+3. 妇孺皆知的是，在上面的例子1的基础上，当我们执行resovle（value）时，
+
+```js
+// 例2
+var promise = new Promise((resolve,reject)=>{
+    setTimeout(function () {
+        resolve(1)
+    })
+})
+
+promise.then(resolve=>{},reject=>{})
+
+```
+
+会把promise对象的status改为resovle，并且把value保存到data，然后执行之前保存的callbacks（上面说过当执行到then时，发现当前的promise是pending状态，会把then里的回调函数保存到promise的callbacks里）。
+
+```js
+function resolve(value) {
+            // 如果当前状态不是pending，则不执行
+            if(self.status !== 'pending'){
+                return
+            }
+            // 将状态改为resolved
+            self.status = 'resolved'
+            // 保存value的值
+            self.data = value
+
+            // 如果有待执行的callback函数，立即异步执行回调函数onResolved
+            if (self.callbacks.length>0){
+                setTimeout(()=>{
+                    self.callbacks.forEach(callbackObj=>{
+                        callbackObj.onResolved(value)
+                    })
+                })
+            }
+        }
+```
+
+4. 我们还知道，promise的状态只能改变一次，因此当执行resolve的时候要判断是不是promise是不是pending的状态，否则是不能执行的
+
+```js
+function resolve(value) {
+            // 如果当前状态不是pending，则不执行
+            if(this.status !== 'pending'){
+                return 
+            }
+            // 将状态改为resolved
+            this.status = 'resolved'
+            // 保存value的值
+            this.data = value
+
+            // 如果有待执行的callback函数，立即异步执行回调函数onResolved
+            if (this.callbacks.length>0){
+                setTimeout(()=>{
+                    this.callbacks.forEach(callbackObj=>{
+                        callbackObj.onResolved(value)
+                    })
+                })
+            }
+        }
+```
+5. 异曲同工之妙的是reject方法也是这个道理，因此这里无需赘述
+
+
+```js
+function reject(value) {
+            // 如果当前状态不是pending，则不执行
+            if(self.status !== 'pending'){
+                return
+            }
+            // 将状态改为resolved
+            self.status = 'rejected'
+            // 保存value的值
+            self.data = value
+
+            // 如果有待执行的callback函数，立即异步执行回调函数onResolved
+            if (self.callbacks.length>0){
+                setTimeout(()=>{
+                    self.callbacks.forEach(callbackObj=>{
+                        callbackObj.onRejected(value)
+                    })
+                })
+            }
+        }
+```
+6. 我们又知道，当在执行executor的时候，如果执行异常的话，这个promise的状态会直接执行reject方法。
+
+```js
+// 例 3
+var promise = new Promise((resolve,reject)=>{
+
+    执行到这里出错了
+
+    setTimeout(function () {
+        resolve(1)
+    })
+})
+```
+要实现这个功能，我们可以在executor外让try catch来捕获
+
+
+```js
+        try{
+            // 立即同步执行executor
+            executor(resolve,reject)
+        }catch (e) { // 如果执行器抛出异常，promise对象变为rejected状态
+            reject(e)
+        }
+```
+
+好了，现在来测试一下，为了测试，我们需要简单的实现下then，让它往callbacks里push then里的回调函数
+
+
+```js
+   Promise.prototype.then = function(onResolved,onRejected){
+        // 假设当前状态还是pending状态，将回调函数保存起来
+        this.callbacks.push({
+            onResolved,
+            onRejected
+        })
+    }
+```
+
+好了，现在测试下，发现成功。
+```js
+ let promise = new Promise((resolve,reject)=>{
+        
+        setTimeout(function () {
+            // resolve(1)
+            reject(1)
+        },100)
+    })
+
+    promise.then(
+        value=>{
+            console.log("onResolved:",value);
+        },
+        reason=>{
+            console.log("onRejected:",reason);
+        }
+    )
+
 ```
 
 

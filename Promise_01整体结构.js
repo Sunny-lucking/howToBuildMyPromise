@@ -9,6 +9,9 @@
      */
     function Promise(executor) {
 
+
+        // 立即同步执行executor
+        executor(resovle,reject)
     }
 
     /*
