@@ -63,7 +63,7 @@
             resolve(22)
         },800)
     })
-    Promise.all([p1,p2]).then(res=>{
+    Promise.race([p1,p2,3]).then(res=>{
         console.log(res);
     })
 </script>
