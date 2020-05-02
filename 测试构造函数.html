@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Title</title>
-    <script src="Promise_04实现catch方法.js"></script>
+    <!--<script src="Promise_04实现catch方法.js"></script>-->
 
 </head>
 <body>
@@ -23,22 +23,28 @@
     //     }
     // )
 
-    new Promise((resolve,reject)=>{
-        reject(1)
-    })
-    .then(2)
-
-    .then(res=>{
-        console.log(res);
-    })
-    // .then(res=>res,
-    //     reason =>{
-    //         console.log(reason);
-    //     }
-    // )
-    .catch((reason)=>{
-        console.log(reason);
-    })
+    // new Promise((resolve,reject)=>{
+    //     reject(1)
+    // })
+    // .then(2)
+    //
+    // .then(res=>{
+    //     console.log(res);
+    // })
+    // // .then(res=>res,
+    // //     reason =>{
+    // //         console.log(reason);
+    // //     }
+    // // )
+    // .catch((reason)=>{
+    //     console.log(reason);
+    // })
+</script>
+<script>
+    // Promise.resolve(1)
+    const p = Promise.resolve(new Promise((resolve => {resolve(2)})))
+    console.log(p);
+    // Promise.resolve(Promise.reject(1))
 </script>
 </body>
 </html>
