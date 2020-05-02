@@ -713,6 +713,195 @@ Promise.prototype.catch = function(onRejected){
 ```
 天啊，居然这么简单
 
+## 4. 实现Promise.resolve
+
+我们都知道，Promise.resolve方法可以传三种值
+1. 不是promise
+2. 成功状态的promise
+3. 失败状态的promise
+
+```js
+
+    Promise.resolve(1)
+    Promise.resolve(Promise.resolve(1))
+    Promise.resolve(Promise.reject(1))
+```
+
+实际上跟实现上面的then时有点像
+
+```js
+Promise.resolve = function(value){
+  return new Promise((resolve,reject)=>{
+      if (value instanceof Promise){
+          // 如果value 是promise
+          value.then(
+              value => {resolve(value)},
+              reason => {reject(reason)}
+          )
+      } else{
+          // 如果value不是promise
+          resolve(value)
+      }
+
+  }
+
+}
+```
+## 5.实现Promise.reject
+实现这个比较简单，返回一个状态为rejected的promise就好了
+
+```js
+/*
+Promise函数对象的reject方法
+返回一个指定reason的失败状态的promise对象
+*/
+Promise.reject = function(reason){
+    return new Promise((resolve,reject)=>{
+        reject(reason)
+    })
+}
+
+```
+## 6.实现Promise.all
+我们知道，这个方法会返回一个promise
+
+```js
+    /*
+    Promise函数对象的all方法
+    返回一个promise对象，只有当所有promise都成功时返回的promise状态才成功
+    */
+    Promise.all = function(promises){
+        return new Promise((resolve,reject)=>{
+           
+        })
+    }
+  
+```
+
+而这个promise的状态由遍历每个promise产生的结果决定
+
+```js
+    /*
+    Promise函数对象的all方法
+    返回一个promise对象，只有当所有promise都成功时返回的promise状态才成功
+    */
+    Promise.all = function(promises){
+        return new Promise((resolve,reject)=>{
+            // 遍历promises，获取每个promise的结果
+            promises.forEach((p,index)=>{
+                
+            })
+        })
+    }
+```
+有两种结果：
+1. 遍历到有一个promise是reject状态，则直接返回的promise状态为rejected
+   
+```js
+ Promise.all = function(promises){
+        return new Promise((resolve,reject)=>{
+            // 遍历promises，获取每个promise的结果
+            promises.forEach((p,index)=>{
+                p.then(
+                    value => {
+    
+                    },
+                    reason => { //只要有一个失败，return的promise状态就为reject
+                        reject(reason)
+                    }
+                )
+            })
+        })
+    }
+```
+2. 遍历所有的promise的状态都为resolved,则返回的promise状态为resolved，并且还要每个promise产生的值传递下去
+
+```js
+   Promise.all = function(promises){
+      const values = new Array(promises.length)
+      var resolvedCount = 0 //计状态为resolved的promise的数量
+      return new Promise((resolve,reject)=>{
+          // 遍历promises，获取每个promise的结果
+          promises.forEach((p,index)=>{
+              p.then(
+                  value => {
+                      // p状态为resolved，将值保存起来
+                      values[index] = value
+                      resolvedCount++;
+                      // 如果全部p都为resolved状态，return的promise状态为resolved
+                      if(resolvedCount === promises.length){
+                          resolve(values)
+                      }
+                  },
+                  reason => { //只要有一个失败，return的promise状态就为reject
+                      reject(reason)
+                  }
+              )
+          })
+      })
+  }
+```
+
+好像可以了，当其实这里还有一个问题，就是all传进去的数组不一定都是promise对象，可能是这样的
+```
+all([p,2,3,p])
+```
+因此需要把不是promise的数字包装成promise
+
+```js
+    Promise.all = function(promises){
+        const values = new Array(promises.length)
+        var resolvedCount = 0 //计状态为resolved的promise的数量
+        return new Promise((resolve,reject)=>{
+            // 遍历promises，获取每个promise的结果
+            promises.forEach((p,index)=>{
+                Promise.resolve(p).then(
+                    value => {
+                        // p状态为resolved，将值保存起来
+                        values[index] = value
+                        resolvedCount++;
+                        // 如果全部p都为resolved状态，return的promise状态为resolved
+                        if(resolvedCount === promises.length){
+                            resolve(values)
+                        }
+                    },
+                    reason => { //只要有一个失败，return的promise状态就为reject
+                        reject(reason)
+                    }
+                )
+            })
+        })
+    }
+```
+
+
+## 7.实现Promise.race
+这个方法的实现要比all简单很多
+
+```js
+  /*
+    Promise函数对象的race方法
+    返回一个promise对象，状态由第一个完成的promise决定
+    */
+    Promise.race = function(promises){
+        return new Promise((resolve,reject)=>{
+            // 遍历promises，获取每个promise的结果
+            promises.forEach((p,index)=>{
+                Promise.resolve(p).then(
+                    value => {
+                        // 只要有一个成功，返回的promise的状态九尾resolved
+                        resolve(value)
+
+                    },
+                    reason => { //只要有一个失败，return的promise状态就为reject
+                        reject(reason)
+                    }
+                )
+            })
+        })
+    }
+
+```
 
 ![](https://imgkr.cn-bj.ufileos.com/0eadfeaf-5a1c-45d4-9f4a-f6ab39fbf53a.png)
 
