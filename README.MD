@@ -702,6 +702,16 @@ onRejected = typeof onRejected === 'function'? onRejected: reason => {throw reas
     }
 
 ```
+## 3.实现catch方法
+妇孺皆知的是，catch方法的作用跟then里的第二歌回调函数一样，因此我们可以这样来实现
+
+
+```js
+Promise.prototype.catch = function(onRejected){
+    return this.then(undefined,onRejected)
+}
+```
+天啊，居然这么简单
 
 
 ![](https://imgkr.cn-bj.ufileos.com/0eadfeaf-5a1c-45d4-9f4a-f6ab39fbf53a.png)

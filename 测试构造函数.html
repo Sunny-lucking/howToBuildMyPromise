@@ -24,18 +24,21 @@
     // )
 
     new Promise((resolve,reject)=>{
-        resolve(1)
+        reject(1)
     })
     .then(2)
 
     .then(res=>{
         console.log(res);
     })
-    .then(res=>res,
-        reason =>{
-            console.log(reason);
-        }
-    )
+    // .then(res=>res,
+    //     reason =>{
+    //         console.log(reason);
+    //     }
+    // )
+    .catch((reason)=>{
+        console.log(reason);
+    })
 </script>
 </body>
 </html>
