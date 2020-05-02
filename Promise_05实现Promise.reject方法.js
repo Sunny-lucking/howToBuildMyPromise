@@ -152,7 +152,9 @@
     返回一个指定reason的失败状态的promise对象
     */
     Promise.reject = function(reason){
-
+        return new Promise((resolve,reject)=>{
+            reject(reason)
+        })
     }
 
     /*
