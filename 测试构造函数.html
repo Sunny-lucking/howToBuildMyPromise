@@ -3,26 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <title>Title</title>
-    <script src="Promise_02实现Promise构造函数.js"></script>
+    <script src="Promise_04实现catch方法.js"></script>
 
 </head>
 <body>
 <script>
-    let promise = new Promise((resolve,reject)=>{
+    // let promise = new Promise((resolve,reject)=>{
+    //     resolve(1)
+    // })
+
+    // promise.then(
+    //     value=>{
+    //         return new Promise((resolve,reject)=>{
+    //             resolve(2)
+    //         })
+    //     },
+    //     reason=>{
+    //         console.log("onRejected:",reason);
+    //     }
+    // )
+
+    new Promise((resolve,reject)=>{
         resolve(1)
     })
+    .then(2)
 
-    promise.then(
-        value=>{
-            return new Promise((resolve,reject)=>{
-                resolve(2)
-            })
-        },
-        reason=>{
-            console.log("onRejected:",reason);
+    .then(res=>{
+        console.log(res);
+    })
+    .then(res=>res,
+        reason =>{
+            console.log(reason);
         }
     )
-
 </script>
 </body>
 </html>

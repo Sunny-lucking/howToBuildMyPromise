@@ -309,8 +309,8 @@ Promise.prototype.then = function(onResolved,onRejected){
         if(self.status === 'pending'){
             // promise当前状态还是pending状态，将回调函数保存起来
             self.callbacks.push({
-                onResolved,
-                onRejected
+                onResolved(){onResolved(self.data)},
+                onRejected(){onRejected(self.data)}
             })
         }else if(self.status === 'resolved'){
             setTimeout(()=>{
@@ -338,8 +338,8 @@ Promise.prototype.then = function(onResolved,onRejected){
             if(self.status === 'pending'){
                 // promise当前状态还是pending状态，将回调函数保存起来
                 self.callbacks.push({
-                    onResolved,
-                    onRejected
+                    onResolved(){onResolved(self.data)},
+                    onRejected(){onRejected(self.data)}
                 })
             }else if(self.status === 'resolved'){
                 setTimeout(()=>{
@@ -384,8 +384,8 @@ Promise.prototype.then = function(onResolved,onRejected){
             if(self.status === 'pending'){
                 // promise当前状态还是pending状态，将回调函数保存起来
                 self.callbacks.push({
-                    onResolved,
-                    onRejected
+                    onResolved(){onResolved(self.data)},
+                    onRejected(){onRejected(self.data)}
                 })
             }else if(self.status === 'resolved'){
                 setTimeout(()=>{
@@ -437,8 +437,8 @@ Promise.prototype.then = function(onResolved,onRejected){
             if(self.status === 'pending'){
                 // promise当前状态还是pending状态，将回调函数保存起来
                 self.callbacks.push({
-                    onResolved,
-                    onRejected
+                    onResolved(){onResolved(self.data)},
+                    onRejected(){onRejected(self.data)}
                 })
             }else if(self.status === 'resolved'){
                 setTimeout(()=>{
@@ -497,7 +497,211 @@ setTimeout(()=>{
     }
 })
 ```
+异曲同工之妙的是当当status === 'rejected'，道理一样
 
+```js
+ setTimeout(()=>{
+      try{
+          const result = onRejected(self.data)
+          if (result instanceof Promise){
+              // 2. 如果回调函数返回的是promise，return的promise的结果就是这个promise的结果
+              result.then(
+                  value => {resolve(value)},
+                  reason => {reject(reason)}
+              )
+          } else {
+              // 1. 如果回调函数返回的不是promise，return的promise的状态是resolved，value就是返回的值。
+              resolve(result)
+          }
+      }catch (e) {
+          //  3.如果执行onResolved的时候抛出错误，则返回的promise的状态为rejected
+          reject(e)
+      }
+  })
+```
+
+到这里，我们发现当执行resolve的时候，`onResolved(self.data)`和`onRejected(self.data)`执行时也会跟上面一样的结果，可以说执行回调函数都要做以上判断，因此我们要将
+
+```
+ self.callbacks.push({
+    onResolved(){onResolved(self.data)},
+    onRejected(){onRejected(self.data)}
+})
+```
+改成
+
+```js
+if(self.status === 'pending'){
+// promise当前状态还是pending状态，将回调函数保存起来
+self.callbacks.push({
+    onResolved(){
+        try{
+            const result = onResolved(self.data)
+            if (result instanceof Promise){
+                // 2. 如果回调函数返回的是promise，return的promise的结果就是这个promise的结果
+                result.then(
+                    value => {resolve(value)},
+                    reason => {reject(reason)}
+                )
+            } else {
+                // 1. 如果回调函数返回的不是promise，return的promise的状态是resolved，value就是返回的值。
+                resolve(result)
+            }
+        }catch (e) {
+            //  3.如果执行onResolved的时候抛出错误，则返回的promise的状态为rejected
+            reject(e)
+        }
+    },
+```
+到此，我们发现，相同的代码太多了，因此有必要封装一下
+
+```
+ function handle(callback) {
+    try{
+        const result = callback(self.data)
+        if (result instanceof Promise){
+            // 2. 如果回调函数返回的是promise，return的promise的结果就是这个promise的结果
+            result.then(
+                value => {resolve(value)},
+                reason => {reject(reason)}
+            )
+        } else {
+            // 1. 如果回调函数返回的不是promise，return的promise的状态是resolved，value就是返回的值。
+            resolve(result)
+        }
+    }catch (e) {
+        //  3.如果执行onResolved的时候抛出错误，则返回的promise的状态为rejected
+        reject(e)
+    }
+}
+```
+
+这样以来就清爽了很多
+
+```js
+   Promise.prototype.then = function(onResolved,onRejected){
+
+        var self = this
+
+        return new Promise((resolve,reject)=>{
+           /*
+            调用指定回调函数的处理，根据执行结果。改变return的promise状态
+             */
+            function handle(callback) {
+                try{
+                    const result = callback(self.data)
+                    if (result instanceof Promise){
+                        // 2. 如果回调函数返回的是promise，return的promise的结果就是这个promise的结果
+                        result.then(
+                            value => {resolve(value)},
+                            reason => {reject(reason)}
+                        )
+                    } else {
+                        // 1. 如果回调函数返回的不是promise，return的promise的状态是resolved，value就是返回的值。
+                        resolve(result)
+                    }
+                }catch (e) {
+                    //  3.如果执行onResolved的时候抛出错误，则返回的promise的状态为rejected
+                    reject(e)
+                }
+            }
+            if(self.status === 'pending'){
+                // promise当前状态还是pending状态，将回调函数保存起来
+                self.callbacks.push({
+                    onResolved(){
+                        handle(onResolved)
+                    },
+                    onRejected(){
+                        handle(onRejected)
+                    }
+                })
+            }else if(self.status === 'resolved'){
+                setTimeout(()=>{
+                    handle(onResolved)
+                })
+            }else{ // 当status === 'rejected'
+                setTimeout(()=>{
+                    handle(onRejected)
+                })
+            }
+        })
+
+    }
+
+```
+另外，我们还知道，promise会发生直传透，例如
+
+```js
+Promise.resolve(1)
+  .then(2)
+  .then(Promise.resolve(3))
+  .then(console.log)
+```
+运行结果： 1
+
+解释：.then 或者 .catch 的参数期望是函数，传入非函数则会发生值穿透。值传透可以理解为，当传入then的不是函数的时候，这个then是无效的。
+
+因此，要实现直传透这个特性，我们可以这样实现
+
+ 添加这两句来判断要不要发生值传透
+```js
+onResolved = typeof onResolved === 'function'? onResolved: value => value
+onRejected = typeof onRejected === 'function'? onRejected: reason => {throw reason}
+```
+
+```js
+ Promise.prototype.then = function(onResolved,onRejected){
+        onResolved = typeof onResolved === 'function'? onResolved: value => value
+        onRejected = typeof onRejected === 'function'? onRejected: reason => {throw reason}
+        var self = this
+
+        return new Promise((resolve,reject)=>{
+
+            /*
+            调用指定回调函数的处理，根据执行结果。改变return的promise状态
+             */
+            function handle(callback) {
+                try{
+                    const result = callback(self.data)
+                    if (result instanceof Promise){
+                        // 2. 如果回调函数返回的是promise，return的promise的结果就是这个promise的结果
+                        result.then(
+                            value => {resolve(value)},
+                            reason => {reject(reason)}
+                        )
+                    } else {
+                        // 1. 如果回调函数返回的不是promise，return的promise的状态是resolved，value就是返回的值。
+                        resolve(result)
+                    }
+                }catch (e) {
+                    //  3.如果执行onResolved的时候抛出错误，则返回的promise的状态为rejected
+                    reject(e)
+                }
+            }
+            if(self.status === 'pending'){
+                // promise当前状态还是pending状态，将回调函数保存起来
+                self.callbacks.push({
+                    onResolved(){
+                        handle(onResolved)
+                    },
+                    onRejected(){
+                        handle(onRejected)
+                    }
+                })
+            }else if(self.status === 'resolved'){
+                setTimeout(()=>{
+                    handle(onResolved)
+                })
+            }else{ // 当status === 'rejected'
+                setTimeout(()=>{
+                    handle(onRejected)
+                })
+            }
+        })
+
+    }
+
+```
 
 
 ![](https://imgkr.cn-bj.ufileos.com/0eadfeaf-5a1c-45d4-9f4a-f6ab39fbf53a.png)

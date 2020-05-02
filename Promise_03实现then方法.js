@@ -68,38 +68,50 @@
     返回一个新的promise对象
      */
     Promise.prototype.then = function(onResolved,onRejected){
-
+        onResolved = typeof onResolved === 'function'? onResolved: value => value
+        onRejected = typeof onRejected === 'function'? onRejected: reason => {throw reason}
         var self = this
 
         return new Promise((resolve,reject)=>{
+
+            /*
+            调用指定回调函数的处理，根据执行结果。改变return的promise状态
+             */
+            function handle(callback) {
+                try{
+                    const result = callback(self.data)
+                    if (result instanceof Promise){
+                        // 2. 如果回调函数返回的是promise，return的promise的结果就是这个promise的结果
+                        result.then(
+                            value => {resolve(value)},
+                            reason => {reject(reason)}
+                        )
+                    } else {
+                        // 1. 如果回调函数返回的不是promise，return的promise的状态是resolved，value就是返回的值。
+                        resolve(result)
+                    }
+                }catch (e) {
+                    //  3.如果执行onResolved的时候抛出错误，则返回的promise的状态为rejected
+                    reject(e)
+                }
+            }
             if(self.status === 'pending'){
                 // promise当前状态还是pending状态，将回调函数保存起来
                 self.callbacks.push({
-                    onResolved,
-                    onRejected
+                    onResolved(){
+                        handle(onResolved)
+                    },
+                    onRejected(){
+                        handle(onRejected)
+                    }
                 })
             }else if(self.status === 'resolved'){
                 setTimeout(()=>{
-                    try{
-                        const result = onResolved(self.data)
-                        if (result instanceof Promise){
-                            // 2. 如果回调函数返回的是promise，return的promise的结果就是这个promise的结果
-                            result.then(
-                                value => {resolve(value)},
-                                reason => {reject(reason)}
-                            )
-                        } else {
-                            // 1. 如果回调函数返回的不是promise，return的promise的状态是resolved，value就是返回的值。
-                            resolve(result)
-                        }
-                    }catch (e) {
-                        //  3.如果执行onResolved的时候抛出错误，则返回的promise的状态为rejected
-                        reject(e)
-                    }
+                    handle(onResolved)
                 })
-            }else{
+            }else{ // 当status === 'rejected'
                 setTimeout(()=>{
-                    onResolved(self.data)
+                    handle(onRejected)
                 })
             }
         })
