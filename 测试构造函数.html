@@ -40,11 +40,32 @@
     //     console.log(reason);
     // })
 </script>
+<!--<script>-->
+    <!--// Promise.resolve(1)-->
+    <!--const p = Promise.resolve(new Promise()))-->
+    <!--console.log(p);-->
+    <!--// Promise.resolve(Promise.reject(1))-->
+
+    <!--p.then((resolve)=>{-->
+        <!--return new Promise((resolve => {resolve(2)})-->
+    <!--})-->
+<!--</script>-->
 <script>
-    // Promise.resolve(1)
-    const p = Promise.resolve(new Promise((resolve => {resolve(2)})))
-    console.log(p);
-    // Promise.resolve(Promise.reject(1))
+    var p1 = new Promise((resolve,reject)=>{
+        setTimeout(()=>{
+            console.log("M");
+            resolve(111)
+        },1000)
+    })
+    var p2 = new Promise((resolve,reject)=>{
+        setTimeout(()=>{
+            console.log("W");
+            resolve(22)
+        },800)
+    })
+    Promise.all([p1,p2]).then(res=>{
+        console.log(res);
+    })
 </script>
 </body>
 </html>
